@@ -5,15 +5,67 @@ import os
 import re
 import sqlite3
 
-dbname = "indeed_jobs.sqlite"
 keywords = "keywords.txt"
 
+
+class SQLiteDB(object):
+    def __init__(self):
+        self.jobs_db = "jobs.sqlite"        
+        self.conn = None
+        self.cursor = None
+
+        if os.path.exists(self.jobs_db):
+            self.conn = sqlite3.connect(self.jobs_db)
+            self.cursor = self.conn.cursor()
+            print("Connected to db")
+        else:
+            self.create_new_db()
+
+    def create_new_db(self):
+        self.conn = sqlite3.connect(self.jobs_db)
+        self.cursor = self.conn.cursor()
+        self.cursor.execute(        
+        """
+        CREATE TABLE jobs 
+        (
+            id TEXT PRIMARY KEY, 
+            title TEXT, 
+            url TEXT,
+            search_job TEXT,
+            search_location TEXT,
+            location TEXT,
+            count INT 
+        )
+        """)
+        self.conn.commit()
+        print("Created db")
+
+
+    def insert(self, job_id, job_title, job_url, search_job, search_location, location, count):
+        try:
+            self.cursor.execute(
+            """
+            INSERT INTO jobs
+                (id, title, url, search_job, search_location, location, count)
+                VALUES
+                ('%s','%s','%s','%s', '%s', '%s', %s)
+            """ % (job_id, job_title, job_url, search_job, search_location, location, count)
+            )    
+            self.conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def close(self):
+        self.conn.close()
+
+
 class IndeedCrawler(object):
-    def __init__(self, keywords_filename, db_filename):
+    def __init__(self, keywords_filename):
         self.keywords_filename = keywords_filename
-        self.db_filename = db_filename
         self.base_url = "https://www.indeed.com/"
         self.keywords = self.__get_keywords()
+        self.db = SQLiteDB()
 
     def get_content(self, url):
         return requests.get(url, headers={"Accept-Encoding" : "identity"}).content
@@ -23,7 +75,7 @@ class IndeedCrawler(object):
         url, content = self.search_indeed(job, location)
         total_pages = self.get_total_number_of_jobs(content)
 
-        self.search_jobs(url, total_pages)
+        self.search_jobs(url, job, location, total_pages)
 
 
     def search_indeed(self, job, location):
@@ -44,10 +96,9 @@ class IndeedCrawler(object):
         return total_pages        
 
 
-    def search_jobs(self, url, total_pages):
-        print(total_pages)
-        for page in range(6, total_pages+1):
-            print(page)
+    def search_jobs(self, url, search_job, search_location, total_pages):
+        for page in range(1, total_pages+1):
+            print("%s / %s" % (str(page), str(total_pages)))
             content = self.get_content(url + "&sort=date&start=" + str(page * 10))
             soup = BeautifulSoup(content, "lxml")
 
@@ -61,12 +112,19 @@ class IndeedCrawler(object):
                     job_anchor_tag = job.find("a")
                     job_url = job_anchor_tag["href"]
                     job_id = job["id"]
+                    job_location = job.find(class_="location").text
                     job_title = job_anchor_tag["title"].encode("utf-8").decode("ascii", "ignore")
                     job_contents = self.__extract_job_post_contents(self.base_url + job_url)
                     useful_words = self.__sanitize_job_summary(job_contents)
-                    print(job_title) 
+                    keyword_count = sum([1 if f in self.keywords else 0 for f in useful_words])
+                    self.db.insert(job_id, job_url, job_title, search_job, search_location, job_location, keyword_count)                    
+
             except Exception as e:
                 print(e, job_url)
+
+        print("Done")
+        self.db.close()
+        
 
     def __extract_job_post_contents(self, url):
         content = self.get_content(url)
@@ -100,12 +158,12 @@ class IndeedCrawler(object):
 
     def __get_keywords(self):
         fileObj = open(self.keywords_filename, "r")
-        contents = fileObj.read().split("\n")
+        keywords = fileObj.read().split("\n")
         fileObj.close()
-        contents = [f.lower() for f in contents if f]
-        return contents
+        keywords = [f.lower() for f in keywords if f]
+        return set(keywords)
         
  
 
-a = IndeedCrawler(keywords, dbname)
+a = IndeedCrawler(keywords)
 content = a.search("Software Developer", "Beaverton, OR")
