@@ -16,28 +16,57 @@ class IndeedCrawler(object):
         self.keywords = self.__get_keywords()
 
     def get_content(self, url):
-        return requests.get(url).content
+        return requests.get(url, headers={"Accept-Encoding" : "identity"}).content
+
+
+    def search(self, job, location):
+        url, content = self.search_indeed(job, location)
+        total_pages = self.get_total_number_of_jobs(content)
+
+        self.search_jobs(url, total_pages)
+
 
     def search_indeed(self, job, location):
         url = self.base_url + "jobs?q={0}&l={1}".format(job, location)
         content = self.get_content(url)
-        return content
+        return url, content
 
 
-    def search_jobs(self, content):
+    def get_total_number_of_jobs(self, content):
         soup = BeautifulSoup(content, "lxml")
-        results_td = soup.find("td", id="resultsCol")
-        assert results_td != None
-        page_rows = results_td.find_all("div", class_="row")
-        assert page_rows != None
+        search_count = soup.find(id="searchCount").text
+        search_count = re.search("\d+$", search_count)
+        if not search_count:
+            return None
 
-        for job in page_rows:
-            job_anchor_tag = job.find("a")
-            job_url = job_anchor_tag["href"]
-            job_id = job["id"]
-            job_title = job_anchor_tag["title"]
-            job_contents = self.__extract_job_post_contents(self.base_url + job_url)
-            useful_words = self.__sanitize_job_summary(job_contents)
+        search_count = int(search_count.group(0))
+        total_pages = search_count / 10
+        return total_pages        
+
+
+    def search_jobs(self, url, total_pages):
+        print(total_pages)
+        for page in range(6, total_pages+1):
+            print(page)
+            content = self.get_content(url + "&sort=date&start=" + str(page * 10))
+            soup = BeautifulSoup(content, "lxml")
+
+            results_td = soup.find("td", id="resultsCol")
+            assert results_td != None
+            page_rows = results_td.find_all("div", class_="row")
+            assert page_rows != None
+
+            try:
+                for job in page_rows:
+                    job_anchor_tag = job.find("a")
+                    job_url = job_anchor_tag["href"]
+                    job_id = job["id"]
+                    job_title = job_anchor_tag["title"].encode("utf-8").decode("ascii", "ignore")
+                    job_contents = self.__extract_job_post_contents(self.base_url + job_url)
+                    useful_words = self.__sanitize_job_summary(job_contents)
+                    print(job_title) 
+            except Exception as e:
+                print(e, job_url)
 
     def __extract_job_post_contents(self, url):
         content = self.get_content(url)
@@ -78,6 +107,5 @@ class IndeedCrawler(object):
         
  
 
-a = IndeedCrawler()
-content = a.search_indeed("Software Developer", "Beaverton, OR")
-a.search_jobs(content)
+a = IndeedCrawler(keywords, dbname)
+content = a.search("Software Developer", "Beaverton, OR")
