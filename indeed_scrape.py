@@ -6,11 +6,14 @@ import re
 import sqlite3
 
 dbname = "indeed_jobs.sqlite"
-
+keywords = "keywords.txt"
 
 class IndeedCrawler(object):
-    def __init__(self):
+    def __init__(self, keywords_filename, db_filename):
+        self.keywords_filename = keywords_filename
+        self.db_filename = db_filename
         self.base_url = "https://www.indeed.com/"
+        self.keywords = self.__get_keywords()
 
     def get_content(self, url):
         return requests.get(url).content
@@ -29,32 +32,35 @@ class IndeedCrawler(object):
         assert page_rows != None
 
         for job in page_rows:
-            job_url = job.find("a")["href"]
-            if re.match("^/rc/", job_url) != None or re.match("/pagead/", job_url) != None:
-                continue
+            job_anchor_tag = job.find("a")
+            job_url = job_anchor_tag["href"]
             job_id = job["id"]
-            job_title, job_summary = self.__extract_indeed_job_contents(self.base_url + job_url)
-            useful_words = self.__sanitize_job_summary(job_summary)
+            job_title = job_anchor_tag["title"]
+            job_contents = self.__extract_job_post_contents(self.base_url + job_url)
+            useful_words = self.__sanitize_job_summary(job_contents)
 
-        
-
-    def __extract_indeed_job_contents(self, url):
+    def __extract_job_post_contents(self, url):
         content = self.get_content(url)
         soup = BeautifulSoup(content, "lxml")
-        job_title = None
-        job_summary = None
-        try:
-            job_content = soup.find(id="job-content").td
-            job_title = job_content.find(class_="jobtitle").text
-            job_summary = job_content.find(id="job_summary").find_all("p")
-            job_summary = [f.text for f in job_summary]
-            job_summary = " ".join(job_summary)
-        except Exception as e:
-            print(e, url)
+        
+        texts = soup.findAll(text=True)
+        visible = filter(self.__visible_text, texts)
+        visible = [f.strip() for f in visible if f]
+        visible = " ".join(visible)
+        return visible
 
+    # https://stackoverflow.com/questions/1936466/beautifulsoup-grab-visible-webpage-text
+    def __visible_text(self, element):
+        ascii = element.encode("utf-8").decode("ascii", "ignore").strip()
+        if not ascii:
+            return False
+        if element.parent.name in ["style", "script", "[document]", "head", "title"]:
+            return False
+        elif re.match("<!---.*-->", ascii):
+            return False
+        return True
 
-        return job_title, job_summary
-
+        
      
     def __sanitize_job_summary(self, summary):
         summary = summary.encode("utf-8").lower().split()
@@ -62,6 +68,14 @@ class IndeedCrawler(object):
         summary = [f for f in summary if not f in stop_words]
         return list(set(summary))
 
+
+    def __get_keywords(self):
+        fileObj = open(self.keywords_filename, "r")
+        contents = fileObj.read().split("\n")
+        fileObj.close()
+        contents = [f.lower() for f in contents if f]
+        return contents
+        
  
 
 a = IndeedCrawler()
