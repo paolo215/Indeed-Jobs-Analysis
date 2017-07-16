@@ -1,10 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 from nltk.corpus import stopwords
+from fake_useragent import UserAgent
 import os
 import re
 import sqlite3
 import time
+
 
 keywords = "keywords.txt"
 
@@ -35,7 +37,9 @@ class SQLiteDB(object):
             search_job TEXT,
             search_location TEXT,
             location TEXT,
-            count INT 
+            count INT,
+            applied INT,
+            viewed INT
         )
         """)
         self.conn.commit()
@@ -47,9 +51,9 @@ class SQLiteDB(object):
             self.cursor.execute(
             """
             INSERT INTO jobs
-                (id, title, url, search_job, search_location, location, count)
+                (id, title, url, search_job, search_location, location, count, applied, viewed)
                 VALUES
-                ('%s','%s','%s','%s', '%s', '%s', %s)
+                ('%s','%s','%s','%s', '%s', '%s', '%s', 0, 0)
             """ % (job_id, job_title, job_url, search_job, search_location, location, count)
             )    
             self.conn.commit()
@@ -67,9 +71,15 @@ class IndeedCrawler(object):
         self.base_url = "https://www.indeed.com/"
         self.keywords = self.__get_keywords()
         self.db = SQLiteDB()
+        self.user_agent = UserAgent()
+        self.headers = {"headers": self.user_agent.chrome}
+        self.headers["Accept-Encoding"] = "identity"
+
+        
+        
 
     def get_content(self, url):
-        return requests.get(url, headers={"Accept-Encoding" : "identity"}).content
+        return requests.get(url, self.headers).content
 
 
     def search(self, job, location):
@@ -129,6 +139,14 @@ class IndeedCrawler(object):
         self.db.close()
         
 
+    def count_keywords(useful_words):
+        count = 0
+        for word in useful_words:
+            if re.search(word, self.keywords):
+                count += 1
+        return count 
+
+
     def __extract_job_post_contents(self, url):
         content = self.get_content(url)
         soup = BeautifulSoup(content, "lxml")
@@ -163,8 +181,8 @@ class IndeedCrawler(object):
         fileObj = open(self.keywords_filename, "r")
         keywords = fileObj.read().split("\n")
         fileObj.close()
-        keywords = [f.lower() for f in keywords if f]
-        return set(keywords)
+        keywords = [f.lower().strip() for f in keywords if f]
+        return " ".join(set(keywords))
         
  
 
