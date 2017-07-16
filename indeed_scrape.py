@@ -4,6 +4,7 @@ from nltk.corpus import stopwords
 import os
 import re
 import sqlite3
+import time
 
 keywords = "keywords.txt"
 
@@ -117,7 +118,9 @@ class IndeedCrawler(object):
                     job_contents = self.__extract_job_post_contents(self.base_url + job_url)
                     useful_words = self.__sanitize_job_summary(job_contents)
                     keyword_count = sum([1 if f in self.keywords else 0 for f in useful_words])
-                    self.db.insert(job_id, job_url, job_title, search_job, search_location, job_location, keyword_count)                    
+                    self.db.insert(job_id, job_title, job_url, search_job, search_location, job_location, keyword_count)                    
+                    time.sleep(2)
+
 
             except Exception as e:
                 print(e, job_url)
