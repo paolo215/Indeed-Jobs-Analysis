@@ -11,59 +11,6 @@ import time
 keywords = "keywords.txt"
 
 
-class SQLiteDB(object):
-    def __init__(self):
-        self.jobs_db = "jobs.sqlite"        
-        self.conn = None
-        self.cursor = None
-
-        if os.path.exists(self.jobs_db):
-            self.conn = sqlite3.connect(self.jobs_db)
-            self.cursor = self.conn.cursor()
-            print("Connected to db")
-        else:
-            self.create_new_db()
-
-    def create_new_db(self):
-        self.conn = sqlite3.connect(self.jobs_db)
-        self.cursor = self.conn.cursor()
-        self.cursor.execute(        
-        """
-        CREATE TABLE jobs 
-        (
-            id TEXT PRIMARY KEY, 
-            title TEXT, 
-            url TEXT,
-            search_job TEXT,
-            search_location TEXT,
-            location TEXT,
-            count INT,
-            applied INT,
-            viewed INT
-        )
-        """)
-        self.conn.commit()
-        print("Created db")
-
-
-    def insert(self, job_id, job_title, job_url, search_job, search_location, location, count):
-        try:
-            self.cursor.execute(
-            """
-            INSERT INTO jobs
-                (id, title, url, search_job, search_location, location, count, applied, viewed)
-                VALUES
-                ('%s','%s','%s','%s', '%s', '%s', '%s', 0, 0)
-            """ % (job_id, job_title, job_url, search_job, search_location, location, count)
-            )    
-            self.conn.commit()
-            return True
-        except sqlite3.IntegrityError:
-            return False
-
-    def close(self):
-        self.conn.close()
-
 
 class IndeedCrawler(object):
     def __init__(self, keywords_filename):
