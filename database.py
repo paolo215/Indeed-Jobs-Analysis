@@ -108,10 +108,9 @@ class DB_Manager(object):
             """ % (job_id, job_title, job_url, search_job, search_location, location)
             )    
             self.conn.commit()
-            # TODO: Return id instead of true or false
-            return True
+            return self.cursor.lastrowid
         except sqlite3.IntegrityError:
-            return False
+            return -1
 
 
     def create_keywords_table(self):
@@ -128,7 +127,7 @@ class DB_Manager(object):
         (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             name TEXT NOT NULL UNIQUE,
-            frequency INTEGER DEFAULT 0,
+            frequency INTEGER DEFAULT 1,
             recognized INTEGER DEFAULT 0,
             ignored INTEGER DEFAULT 0
         )
@@ -163,9 +162,47 @@ class DB_Manager(object):
             )
 
             self.conn.commit()
-            return True
+            return self.cursor.lastrowid
+        except sqlite3.IntegrityError:
+            return -1
+
+    def does_keyword_exists(self, name):
+        try:
+            print(name) 
+            self.cursor.execute(
+            "SELECT * from " + self.keywords_table_name + " where name = '%s'" % (name)
+            )
+            rows = self.cursor.fetchall()
+            return True if rows else False
         except sqlite3.IntegrityError:
             return False
+
+    def insert_or_update_keyword(self, name):
+        if self.does_keyword_exists(name):
+            is_recognized = self.does_exists_in_tech_table(name)
+            is_recognized = 1 if is_recognized == True else 0
+            return self.update_keyword_booleans_and_increment(name, is_recognized)
+        else:
+            print("new keyword: " + name)
+            return self.insert_keyword(name)
+
+
+    def update_keyword_booleans(self, name, is_recognized, is_ignored = 0):
+       try:
+            self.cursor.execute("UPDATE " + self.keywords_table_name + \
+                " SET recognized = %d, ignored = %d where name = '%s'" % (is_recognized, is_ignored, str(name)))
+            return self.cursor.lastrowid
+       except sqlite3.IntegrityError:
+            return -1
+
+
+    def update_keyword_booleans_and_increment(self, name, is_recognized, is_ignored = 0):
+       try:
+            self.cursor.execute("UPDATE " + self.keywords_table_name + \
+                " SET recognized = %d, ignored = %d, frequency = frequency + 1 where name = '%s'" % (is_recognized, is_ignored, str(name)))
+            return self.cursor.lastrowid
+       except sqlite3.IntegrityError:
+            return False 
 
     def create_indeed_jobs_tech_table(self):
         """
@@ -180,7 +217,7 @@ class DB_Manager(object):
         """
         (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            job_id INTEGER NOT NULL,
+            job_id TEXT NOT NULL,
             tech_id INTEGER NOT NULL,
             FOREIGN KEY(job_id) REFERENCES indeed_jobs(job_id),
             FOREIGN KEY(tech_id) REFERENCES tech(id)
@@ -264,19 +301,48 @@ class DB_Manager(object):
         except sqlite3.IntegrityError:
             return False
 
+
+    def does_exists_in_tech_table(self, name):
+        try:
+            self.cursor.execute(
+            "SELECT * from " + self.tech_table_name + " where name = '%s' " % (name)
+            )
+
+            rows = self.cursor.fetchall()
+            return True if rows else False
+        except sqlite3.IntegrityError:
+            return False
+
     def get_all_tech(self):
         """
         Retrieves all rows in tech table
         """
         try:
+            # Select all rows
             self.cursor.execute("SELECT * FROM tech")
 
+            # Fetch all rows
             rows = self.cursor.fetchall()
             return rows
 
         except sqlite3.IntegrityError:
             return None
     
+    def get_all_tech_names(self):
+        """
+        Retrieves all names in tech table
+        """
+        try:
+
+            # Select name of every rows in the table
+            self.cursor.execute("SELECT name from tech")
+            
+            # Converts list of dictionary into list of names
+            rows = [f["name"] for f in self.cursor.fetchall()]
+            return rows
+            
+        except sqlite3.IntegrityError:
+            return None
    
     def dict_factory(self, cursor, rows):
         """
