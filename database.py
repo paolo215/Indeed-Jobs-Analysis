@@ -7,15 +7,23 @@ class DB_Manager(object):
         self.conn = None
         self.cursor = None
 
-        if os.path.exists(self.jobs_db):
-            self.conn = sqlite3.connect(self.jobs_db)
-            self.cursor = self.conn.cursor()
-            print("Connected to db")
-        else:
-            self.create_new_db()
+        self.jobs_column_names = None
+        self.jobs_tech_column_names = None
+        self.keywords_column_names = None
+        self.tech_column_names = None
+
+
+        self.jobs_table_name = "indeed_jobs"
+        self.jobs_tech_table_name = "indeed_jobs_tech"
+        self.keywords_table_name = "keywords"
+        self.tech_table_name = "tech"
+        
+
+        self.create_new_db()
 
     def create_new_db(self):
         self.conn = sqlite3.connect(self.jobs_db)
+        self.conn.row_factory = self.dict_factory
         self.cursor = self.conn.cursor()
         self.create_indeed_jobs_table()
         self.create_indeed_jobs_tech_table()
@@ -26,7 +34,9 @@ class DB_Manager(object):
     def create_indeed_jobs_table(self):
         self.cursor.execute(        
         """
-        CREATE TABLE IF NOT EXISTS indeed_jobs 
+        CREATE TABLE IF NOT EXISTS 
+        """ + self.jobs_table_name + \
+        """
         (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
             job_id TEXT NOT NULL,
@@ -39,13 +49,20 @@ class DB_Manager(object):
             viewed INT DEFAULT 0
         )
         """)
+
+        self.cursor.execute(
+            "SELECT * FROM " + self.jobs_table_name
+        )
+        self.jobs_column_names = [f[0] for f in self.cursor.description]
         self.conn.commit()
 
     def insert_job(self, job_id, job_title, job_url, search_job, search_location, location):
         try:
             self.cursor.execute(
             """
-            INSERT INTO indeed_jobs
+            INSERT INTO
+            """ + self.jobs_table_name + \
+            """
                 (job_id, title, url, search_job, search_location, location)
                 VALUES
                 ('%s','%s','%s','%s', '%s', '%s')
@@ -60,7 +77,9 @@ class DB_Manager(object):
     def create_keywords_table(self):
         self.cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS keywords
+        CREATE TABLE IF NOT EXISTS
+        """ + self.keywords_table_name + \
+        """
         (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             name TEXT NOT NULL UNIQUE,
@@ -70,12 +89,19 @@ class DB_Manager(object):
         )
         """
         )
+        self.cursor.execute(
+            "SELECT * FROM " + self.keywords_table_name
+        )
+        self.keywords_column_names = [f[0] for f in self.cursor.description]
+        self.conn.commit()
 
     def insert_keyword(self, name):
         try:
             self.cursor.execute(
             """
-            INSERT INTO keywords
+            INSERT INTO 
+            """ + self.keywords_table_name + \
+            """
                 (name)
                 VALUES
                 ('%s')
@@ -89,7 +115,9 @@ class DB_Manager(object):
     def create_indeed_jobs_tech_table(self):
         self.cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS indeed_jobs_tech
+        CREATE TABLE IF NOT EXISTS 
+        """ + self.jobs_tech_table_name + \
+        """
         (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             job_id INTEGER NOT NULL,
@@ -98,6 +126,10 @@ class DB_Manager(object):
             FOREIGN KEY(tech_id) REFERENCES tech(id)
         )
         """)
+        self.cursor.execute(
+            "SELECT * FROM " + self.jobs_tech_table_name
+        )
+        self.jobs_tech_column_names = [f[0] for f in self.cursor.description]
         self.conn.commit()
 
 
@@ -106,7 +138,9 @@ class DB_Manager(object):
         try:
             self.cursor.execute(
             """
-            INSERT INTO indeed_jobs_tech
+            INSERT INTO
+            """ + self.tech_table_name + \
+            """
                 (job_id, tech_id)
                 VALUES
                 ('%s', '%s')
@@ -120,19 +154,27 @@ class DB_Manager(object):
     def create_tech_table(self):
         self.cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS tech
+        CREATE TABLE IF NOT EXISTS 
+        """ + self.tech_table_name + \
+        """
         (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             name TEXT NOT NULL UNIQUE
         )
         """)
-
+        self.cursor.execute(
+            "SELECT * FROM " + self.tech_table_name
+        )
+        self.tech_column_names = [f[0] for f in self.cursor.description]
+        self.conn.commit()
 
     def insert_tech(self, name):
         try:
             self.cursor.execute(
             """
-            INSERT INTO tech
+            INSERT INTO
+            """ + self.tech_table_name + \
+            """
                 (name)
                 VALUES
                 ('%s')
@@ -142,7 +184,28 @@ class DB_Manager(object):
         except sqlite3.IntegrityError:
             return False
 
+    def get_all_tech(self):
+        try:
+            self.cursor.execute("SELECT * FROM tech")
+
+            rows = self.cursor.fetchall()
+            return rows
+
+        except sqlite3.IntegrityError:
+            return None
+    
+   
+    def dict_factory(self, cursor, rows):
+        data = {}
+        for idx, col in enumerate(cursor.description):
+            data[col[0]] = rows[idx]
+
+        return data
+
 
     def close(self):
         self.conn.close()
 
+
+
+    
