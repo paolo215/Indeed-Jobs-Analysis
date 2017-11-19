@@ -1,4 +1,6 @@
-*.pyc
+config.js
+node_modules/
 *.swp
-*.sqlite*
-keywords.txt
+*.sqlite3
+public/bower_components/
+*.pyc
