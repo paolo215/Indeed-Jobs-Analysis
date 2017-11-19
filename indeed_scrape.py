@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from bs4.element import Comment
 from nltk.corpus import stopwords
 from fake_useragent import UserAgent
 import os
@@ -83,6 +84,7 @@ class IndeedCrawler(object):
                     keyword_count = sum([1 if f in self.keywords else 0 for f in useful_words])
 
                     time.sleep(2)
+   
             except Exception as e:
                 print(e, job_title, job_url)
 
@@ -91,7 +93,7 @@ class IndeedCrawler(object):
         self.db.close()
         
 
-    def __extract_job_post_contents(self, url):
+    def extract_job_post_contents(self, url):
         content = self.get_content(url)
         soup = BeautifulSoup(content, "lxml")
         
@@ -99,6 +101,7 @@ class IndeedCrawler(object):
         visible = filter(self.__visible_text, texts)
         visible = [f.strip() for f in visible if f]
         visible = " ".join(visible)
+        print(visible.encode("utf-8").decode("ascii", "ignore"))
         return visible
 
     # https://stackoverflow.com/questions/1936466/beautifulsoup-grab-visible-webpage-text
@@ -108,7 +111,9 @@ class IndeedCrawler(object):
             return False
         if element.parent.name in ["style", "script", "[document]", "head", "title"]:
             return False
-        elif re.match("<!---.*-->", ascii):
+        elif isinstance(element, Comment):
+            return False
+        elif re.match("http://", ascii):
             return False
         return True
 
@@ -122,7 +127,6 @@ class IndeedCrawler(object):
             if not words[i] in self.stop_words:
                 words[i] = re.sub(r"[\W\'\"\)\(,:]", "", words[i])
                 sanitized_words.append(words[i])
-                print(words[i])
         
         return list(set(sanitized_words))
 
@@ -135,3 +139,4 @@ class IndeedCrawler(object):
 
 a = IndeedCrawler()
 content = a.search("Software Developer", "Beaverton, OR")
+# a.extract_job_post_contents("http://www.vanderhouwen.com/job-postings/sqa-engineer/")
