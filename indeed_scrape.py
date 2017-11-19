@@ -93,7 +93,7 @@ class IndeedCrawler(object):
         self.db.close()
         
 
-    def extract_job_post_contents(self, url):
+    def __extract_job_post_contents(self, url):
         content = self.get_content(url)
         soup = BeautifulSoup(content, "lxml")
         
