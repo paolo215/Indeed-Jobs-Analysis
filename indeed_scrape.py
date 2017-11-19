@@ -4,20 +4,16 @@ from nltk.corpus import stopwords
 from fake_useragent import UserAgent
 import os
 import re
-import sqlite3
 import time
-
-
-keywords = "keywords.txt"
-
+from database import DB_Manager
 
 
 class IndeedCrawler(object):
     def __init__(self, keywords_filename):
         self.keywords_filename = keywords_filename
         self.base_url = "https://www.indeed.com/"
-        self.keywords = self.__get_keywords()
-        self.db = SQLiteDB()
+        self.keywords = self.__get_techs()
+        self.db = DB_Manager()
         self.user_agent = UserAgent()
         self.headers = {"headers": self.user_agent.chrome}
         self.headers["Accept-Encoding"] = "identity"
@@ -124,7 +120,7 @@ class IndeedCrawler(object):
         return list(set(summary))
 
 
-    def __get_keywords(self):
+    def __get_techs(self):
         fileObj = open(self.keywords_filename, "r")
         keywords = fileObj.read().split("\n")
         fileObj.close()

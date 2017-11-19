@@ -1,9 +1,24 @@
-from database import DB_Manager
+
+class Test():
+    pass
+
+class B():
+    def __init__(self, test):
+        self.b = test
 
 
-db = DB_Manager()
-db.insert_job("1", "1", "1", "1", "1", "1")
-db.insert_keyword("test")
-db.insert_jobs_tech("1", "1")
-db.insert_tech("test")
+class A():
+    def __init__(self):
+        self.a = Test()
+        self.b = B(self.a)
+
+    def test(self):
+        self.a = None
+
+a = A()
+print(a.a)
+print(a.b)
+a.test()
+print(a.a)
+print(a.b)
 

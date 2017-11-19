@@ -20,7 +20,7 @@ class DB_Manager(object):
         self.create_indeed_jobs_table()
         self.create_indeed_jobs_tech_table()
         self.create_tech_table()
-        self.create_unrecognized_keywords_table()
+        self.create_keywords_table()
 
 
     def create_indeed_jobs_table(self):
@@ -57,14 +57,16 @@ class DB_Manager(object):
             return False
 
 
-    def create_unrecognized_keywords_table(self):
+    def create_keywords_table(self):
         self.cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS unrecognized_keywords
+        CREATE TABLE IF NOT EXISTS keywords
         (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             name TEXT NOT NULL UNIQUE,
-            frequency INTEGER DEFAULT 0
+            frequency INTEGER DEFAULT 0,
+            recognized INTEGER DEFAULT 0,
+            ignored INTEGER DEFAULT 0
         )
         """
         )
@@ -73,7 +75,7 @@ class DB_Manager(object):
         try:
             self.cursor.execute(
             """
-            INSERT INTO unrecognized_keywords
+            INSERT INTO keywords
                 (name)
                 VALUES
                 ('%s')
