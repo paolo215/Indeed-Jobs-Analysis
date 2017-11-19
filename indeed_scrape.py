@@ -9,17 +9,15 @@ from database import DB_Manager
 
 
 class IndeedCrawler(object):
-    def __init__(self, keywords_filename):
-        self.keywords_filename = keywords_filename
+    def __init__(self):
         self.base_url = "https://www.indeed.com/"
-        self.keywords = self.__get_techs()
         self.db = DB_Manager()
         self.user_agent = UserAgent()
         self.headers = {"headers": self.user_agent.chrome}
+        self.stop_words = set(stopwords.words("english"))
         self.headers["Accept-Encoding"] = "identity"
+        self.keywords = self.__get_techs()
 
-        
-        
 
     def get_content(self, url):
         return requests.get(url, self.headers).content
@@ -67,28 +65,31 @@ class IndeedCrawler(object):
                     job_url = job_anchor_tag["href"]
                     job_id = job["id"]
                     job_location = job.find(class_="location").text
+                    job_company = job.find(class_="company").text
+
+                    if job_company == "Indeed Prime":
+                        continue
+
                     job_title = job_anchor_tag["title"].encode("utf-8").decode("ascii", "ignore")
                     job_contents = self.__extract_job_post_contents(self.base_url + job_url)
                     useful_words = self.__sanitize_job_summary(job_contents)
+                    self.db.insert_job(job_id, job_title, job_url, search_job, search_location, job_location)                    
+                    for word in useful_words:
+                        tech_id = self.db.insert_or_update_keyword(word)
+                        is_recognized = self.db.does_exists_in_tech_table(word)
+                        if is_recognized and tech_id != -1:
+                            self.db.insert_jobs_tech(job_id, tech_id)
+
                     keyword_count = sum([1 if f in self.keywords else 0 for f in useful_words])
-                    self.db.insert(job_id, job_title, job_url, search_job, search_location, job_location, keyword_count)                    
+
                     time.sleep(2)
-
-
             except Exception as e:
-                print(e, job_url)
+                print(e, job_title, job_url)
+
 
         print("Done")
         self.db.close()
         
-
-    def count_keywords(useful_words):
-        count = 0
-        for word in useful_words:
-            if re.search(word, self.keywords):
-                count += 1
-        return count 
-
 
     def __extract_job_post_contents(self, url):
         content = self.get_content(url)
@@ -114,20 +115,23 @@ class IndeedCrawler(object):
         
      
     def __sanitize_job_summary(self, summary):
-        summary = summary.encode("utf-8").lower().split()
-        stop_words = set(stopwords.words("english"))
-        summary = [f for f in summary if not f in stop_words]
-        return list(set(summary))
+        words = summary.encode("utf-8").lower().split()
+        sanitized_words = []
+
+        for i in range(len(words)):
+            if not words[i] in self.stop_words:
+                words[i] = re.sub(r"[\W\'\"\)\(,:]", "", words[i])
+                sanitized_words.append(words[i])
+                print(words[i])
+        
+        return list(set(sanitized_words))
 
 
     def __get_techs(self):
-        fileObj = open(self.keywords_filename, "r")
-        keywords = fileObj.read().split("\n")
-        fileObj.close()
-        keywords = [f.lower().strip() for f in keywords if f]
-        return " ".join(set(keywords))
-        
+        rows = self.db.get_all_tech()
+        return rows
+
  
 
-a = IndeedCrawler(keywords)
+a = IndeedCrawler()
 content = a.search("Software Developer", "Beaverton, OR")
