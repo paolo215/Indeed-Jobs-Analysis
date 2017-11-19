@@ -72,8 +72,8 @@ class IndeedCrawler(object):
                         continue
 
                     job_title = job_anchor_tag["title"].encode("utf-8").decode("ascii", "ignore")
-                    job_contents = self.__extract_job_post_contents(self.base_url + job_url)
-                    useful_words = self.__sanitize_job_summary(job_contents)
+                    job_content = self.__extract_job_post_content(self.base_url + job_url)
+                    useful_words = self.__sanitize_job_summary(job_content)
                     self.db.insert_job(job_id, job_title, job_url, search_job, search_location, job_location)                    
                     for word in useful_words:
                         tech_id = self.db.insert_or_update_keyword(word)
@@ -93,7 +93,7 @@ class IndeedCrawler(object):
         self.db.close()
         
 
-    def __extract_job_post_contents(self, url):
+    def __extract_job_post_content(self, url):
         content = self.get_content(url)
         soup = BeautifulSoup(content, "lxml")
         
@@ -139,4 +139,4 @@ class IndeedCrawler(object):
 
 a = IndeedCrawler()
 content = a.search("Software Developer", "Beaverton, OR")
-# a.extract_job_post_contents("http://www.vanderhouwen.com/job-postings/sqa-engineer/")
+# a.extract_job_post_content("http://www.vanderhouwen.com/job-postings/sqa-engineer/")
