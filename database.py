@@ -68,8 +68,7 @@ class DB_Manager(object):
         """ + self.jobs_table_name + \
         """
         (
-            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
-            job_id TEXT NOT NULL,
+            job_id TEXT PRIMARY KEY NOT NULL,
             title TEXT, 
             url TEXT,
             search_job TEXT,
@@ -168,7 +167,6 @@ class DB_Manager(object):
 
     def does_keyword_exists(self, name):
         try:
-            print(name) 
             self.cursor.execute(
             "SELECT * from " + self.keywords_table_name + " where name = '%s'" % (name)
             )
