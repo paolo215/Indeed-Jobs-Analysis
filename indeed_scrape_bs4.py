@@ -72,15 +72,17 @@ class IndeedCrawler(object):
                         continue
 
                     job_title = job_anchor_tag["title"].encode("utf-8").decode("ascii", "ignore")
-                    job_content = self.__extract_job_post_content(self.base_url + job_url)
+                    job_content = self.extract_job_post_content(self.base_url + job_url)
                     useful_words = self.__sanitize_job_summary(job_content)
-                    self.db.insert_job(job_id, job_title, job_url, search_job, search_location, job_location)                    
+                    print(self.db.insert_job(job_id, job_title, job_url, search_job, search_location, job_location))
                     for word in useful_words:
                         tech_id = self.db.insert_or_update_keyword(word)
                         is_recognized = self.db.does_exists_in_tech_table(word)
                         if is_recognized and tech_id != -1:
                             self.db.insert_jobs_tech(job_id, tech_id)
 
+
+                    print(job_url)
                     keyword_count = sum([1 if f in self.keywords else 0 for f in useful_words])
 
                     time.sleep(2)
@@ -93,7 +95,7 @@ class IndeedCrawler(object):
         self.db.close()
         
 
-    def __extract_job_post_content(self, url):
+    def extract_job_post_content(self, url):
         content = self.get_content(url)
         soup = BeautifulSoup(content, "lxml")
         
@@ -138,5 +140,6 @@ class IndeedCrawler(object):
  
 
 a = IndeedCrawler()
-content = a.search("Software Developer", "Beaverton, OR")
+# content = a.search("Software Developer", "Beaverton, OR")
 # a.extract_job_post_content("http://www.vanderhouwen.com/job-postings/sqa-engineer/")
+a.extract_job_post_content("https://ibegin.tcs.com/iBegin/jobs/114603J")
