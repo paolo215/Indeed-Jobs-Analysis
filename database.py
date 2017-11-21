@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import sys
 
 class DB_Manager(object):
     def __init__(self):
@@ -74,6 +75,7 @@ class DB_Manager(object):
             search_job TEXT,
             search_location TEXT,
             location TEXT,
+            company TEXT,
             applied INT DEFAULT 0,
             viewed INT DEFAULT 0
         )
@@ -88,7 +90,7 @@ class DB_Manager(object):
 
         self.conn.commit()
 
-    def insert_job(self, job_id, job_title, job_url, search_job, search_location, location):
+    def insert_job(self, job_id, job_title, job_url, search_job, search_location, location, company):
         """
         Insert row into indeed_jobs table
         """
@@ -101,10 +103,10 @@ class DB_Manager(object):
             INSERT INTO
             """ + self.jobs_table_name + \
             """
-                (job_id, title, url, search_job, search_location, location)
+                (job_id, title, url, search_job, search_location, location, company)
                 VALUES
-                ('%s','%s','%s','%s', '%s', '%s')
-            """ % (job_id, job_title, job_url, search_job, search_location, location)
+                ('%s','%s','%s','%s', '%s', '%s', '%s')
+            """ % (job_id, job_title, job_url, search_job, search_location, location, company)
             )    
             self.conn.commit()
             return self.cursor.lastrowid
@@ -181,7 +183,6 @@ class DB_Manager(object):
             is_recognized = 1 if is_recognized == True else 0
             return self.update_keyword_booleans_and_increment(name, is_recognized)
         else:
-            print("new keyword: " + name)
             return self.insert_keyword(name)
 
 
