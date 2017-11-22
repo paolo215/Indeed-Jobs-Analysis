@@ -76,6 +76,7 @@ class DB_Manager(object):
             search_location TEXT,
             location TEXT,
             company TEXT,
+            description TEXT,
             applied INT DEFAULT 0,
             viewed INT DEFAULT 0
         )
@@ -90,11 +91,10 @@ class DB_Manager(object):
 
         self.conn.commit()
 
-    def insert_job(self, job_id, job_title, job_url, search_job, search_location, location, company):
+    def insert_job(self, job_id, job_title, job_url, search_job, search_location, location, company, description):
         """
         Insert row into indeed_jobs table
         """
-
         try:
     
             # Insert row
@@ -103,10 +103,10 @@ class DB_Manager(object):
             INSERT INTO
             """ + self.jobs_table_name + \
             """
-                (job_id, title, url, search_job, search_location, location, company)
+                (job_id, title, url, search_job, search_location, location, company, description)
                 VALUES
-                ('%s','%s','%s','%s', '%s', '%s', '%s')
-            """ % (job_id, job_title, job_url, search_job, search_location, location, company)
+                ('%s','%s','%s','%s', '%s', '%s', '%s', '%s')
+            """ % (job_id, job_title, job_url, search_job, search_location, location, company, description)
             )    
             self.conn.commit()
             return self.cursor.lastrowid
